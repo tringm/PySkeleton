@@ -23,7 +23,7 @@ class TestCaseCompare(TestCaseTimer):
 
     @classmethod
     def setUpClass(cls,
-                   io_folder_path: Optional[Union[Path, str]] = '/tests/io',
+                   io_folder_path: Optional[Union[Path, str]] = 'tests/io',
                    in_folder_name: Optional[str] = 'in',
                    out_folder_name: Optional[str] = 'out',
                    test_path: Optional[Union[Path, str]] = None):
@@ -46,6 +46,7 @@ class TestCaseCompare(TestCaseTimer):
         cls.in_file = {}
 
     def setUp(self, default_logging_level: Optional[int] = logging.INFO) -> None:
+        super().setUp()
         method_name = self.id().split('.')[-1]
         self.out_file[method_name] = self.output_folder / (method_name + '_out.txt')
         self.exp_file[method_name] = self.output_folder / (method_name + '_exp.txt')
