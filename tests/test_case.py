@@ -23,7 +23,7 @@ class TestCaseCompare(TestCaseTimer):
 
     @classmethod
     def setUpClass(cls,
-                   io_folder_path: Optional[Union[Path, str]] = '/test/io',
+                   io_folder_path: Optional[Union[Path, str]] = '/tests/io',
                    in_folder_name: Optional[str] = 'in',
                    out_folder_name: Optional[str] = 'out',
                    test_path: Optional[Union[Path, str]] = None):
