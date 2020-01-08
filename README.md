@@ -1,12 +1,10 @@
 # PySkeleton
 A skeleton for a generic python project
 
-### Test infrastructure
-Includes:
-- Customized TestCase and TestResult for unittest
-- test.py script with argsparse
-Some features include:
-- Set up input, output folder for test cases
-- Compare expected, output file using meld
-- Discover and run a test suite or specific test case 
-- Save test metrics (test cases, time, result to a metrics.log file)
+### [Test infrastructure](tests)
+Based on [unittest](https://docs.python.org/3/library/unittest.html):
+- Customized [TestCase](tests/utils/test_case.py) with timer, set up io folder and file compare support
+- Customized [TestResult](tests/utils/test_result.py) that log metrics and interactive file compare with meld
+- Customized [CLI](tests/test.py):
+    - Discover suite, case, method based on hierarchy
+    - Flag option for test dir, metric file, verbosity, and meld  
