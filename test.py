@@ -1,8 +1,8 @@
 import argparse
 import sys
 
-from tests.test_case import *
-from tests.test_result import *
+from tests.utils.test_case import *
+from tests.utils.test_result import *
 
 METRICS_LOGS_PATH = root_path() / 'tests' / 'io' / 'out' / 'metrics.log'
 

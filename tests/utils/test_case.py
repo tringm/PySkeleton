@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from typing import Optional, Union
 
-from config import root_path, set_up_logger
+from utils.generic_utils import project_root_path
 
 
 class TestCaseTimer(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestCaseTimer(unittest.TestCase):
 
 class TestCaseCompare(TestCaseTimer):
     """
-    The test case compare compare between the exp file and the out file stored in the output folder of a test case
+    The test case support comparision between the exp file and the out file stored in the output folder of a test case
     """
 
     @classmethod
@@ -31,38 +31,35 @@ class TestCaseCompare(TestCaseTimer):
         :param io_folder_path: Path to test io folder from project root
         :param in_folder_name: Input folder name
         :param out_folder_name: Output folder name
-        :param test_path: Path to test class if specfied, else use class name
+        :param test_path: Path to test class if specified, else use class name
         :return:
         """
-        io_path = root_path().joinpath(io_folder_path)
+        io_path = project_root_path().joinpath(io_folder_path)
         if not test_path:
             test_path = cls.__name__
         cls.input_folder = (io_path / in_folder_name).joinpath(test_path)
         cls.output_folder = (io_path / out_folder_name).joinpath(test_path)
-        cls.input_folder.mkdir(parents=True, exist_ok=True)
         cls.output_folder.mkdir(parents=True, exist_ok=True)
         cls.out_file = {}
         cls.exp_file = {}
         cls.in_file = {}
 
-    def setUp(self, default_logging_level: Optional[int] = logging.INFO) -> None:
+    def setUp(self):
         super().setUp()
-        method_name = self.id().split('.')[-1]
-        self.out_file[method_name] = self.output_folder / (method_name + '_out.txt')
-        self.exp_file[method_name] = self.output_folder / (method_name + '_exp.txt')
-        set_up_logger(self.output_folder, method_name, default_logging_level)
-        self.logger = logging.getLogger(method_name)
+        self.method_name = self.id().split('.')[-1]
+        self.out_file[self.method_name] = self.output_folder / (self.method_name + '_out.txt')
+        self.exp_file[self.method_name] = self.output_folder / (self.method_name + '_exp.txt')
+        self.logger = logging.getLogger(self.method_name)
 
     def file_compare(self, out_f: Path, exp_f: Path, msg=None):
-        if not out_f.exists() or not exp_f.exists():
-            raise ValueError(f"Either {out_f} or {exp_f} does not exist")
-        if not out_f.is_file() or not exp_f.is_file():
-            raise ValueError(f"Either {out_f} or {exp_f} is not a file")
+        for f in [out_f, exp_f]:
+            if not f.exists():
+                raise ValueError(f"{f} does not exist")
+            if not f.is_file():
+                raise ValueError(f"{f} is not a file")
         if not msg:
-            self.assertTrue(filecmp.cmp(str(out_f), str(exp_f), shallow=False),
-                            f"out file {str(out_f)} does not match exp file {str(exp_f)}")
-        else:
-            self.assertTrue(filecmp.cmp(str(out_f), str(exp_f), shallow=False), msg)
+            msg = f"{out_f} does not match {exp_f}"
+        self.assertTrue(filecmp.cmp(str(out_f), str(exp_f), shallow=False), msg)
 
     def file_compare_by_method_id(self, method_id):
         self.file_compare(out_f=self.out_file[method_id], exp_f=self.exp_file[method_id])
