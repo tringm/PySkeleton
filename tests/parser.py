@@ -1,5 +1,6 @@
 import argparse
 import logging
+import logging.handlers
 import os
 import sys
 import time
@@ -90,7 +91,7 @@ class TestParser(argparse.ArgumentParser):
             '-l', '--logDirPath', type=str, default='.logs',
             help=f"Path to log dir containing debug log (default: .logs)"
         )
-        self.add_argument('-s', '--logStdout', action='store_true', help='log to stdout')
+        self.add_argument('-s', '--logStdout', action='store_true', help='log to stdout as well as to a log file')
         self.add_argument(
             '-v', '--verbose', action='store_true',
             help=f"Make the test verbose (default False)"
@@ -120,12 +121,16 @@ class TestParser(argparse.ArgumentParser):
 
         log_dir = ROOT_PATH.joinpath(args.logDirPath)
         log_dir.mkdir(exist_ok=True)
+
         os.environ['METRICS_LOG_PATH'] = str(log_dir / 'test_metrics.log')
+        file_handler = logging.handlers.RotatingFileHandler(
+            filename=str(log_dir / 'test.log'), maxBytes=10 * 1024 * 1024, backupCount=5
+        )
         log_config_kwargs = {
             'format': '%(asctime)s %(name)-20s %(levelname)-10s %(message)s',
             'datefmt': "%Y-%m-%dT%H:%M:%S%z",
-            'handlers': [logging.FileHandler(str(log_dir / 'test.log')), logging.StreamHandler()]
-            if args.logStdout else [logging.FileHandler(str(log_dir / 'test.log'))]
+            'handlers': [file_handler, logging.StreamHandler()]
+            if args.logStdout else [file_handler]
         }
 
         if args.verbose:
