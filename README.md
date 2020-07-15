@@ -8,3 +8,9 @@ Based on [unittest](https://docs.python.org/3/library/unittest.html):
 - Customized [Test CLI](tests/parser.py):
     - Discover suite, case, method based on hierarchy
     - Flag option for test dir, metric file, verbosity, and meld  
+
+**To add a test suite, simply add a new package in the `tests` package and add test cases there**
+
+### [Utils pacakge](utils)
+- [Logging utils](utils/logging.py)
+- A versatile [ArgParser](utils/parser.py) on top of argparse.ArgumentParser
