@@ -5,7 +5,7 @@ import sys
 from abc import abstractmethod
 from pathlib import Path
 
-from utils._typing import FilePath, FilePathOrBuffer
+from ._typing import FilePath, FilePathOrBuffer
 
 
 class ArgParser(argparse.ArgumentParser):

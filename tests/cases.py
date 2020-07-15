@@ -8,22 +8,63 @@ from pathlib import Path
 from typing import Optional, Union
 import os
 
-from .parser import ROOT_PATH
+from . import TEST_DIR_PATH
+
+
+LOG = logging.getLogger('TestCase')
 
 
 class BaseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        class_path = Path(sys.modules[cls.__module__].__file__)
-        cls.test_dir_path = ROOT_PATH / class_path.relative_to(ROOT_PATH).parts[0]
-        cls.relative_to_test_dir = class_path.relative_to(cls.test_dir_path).parent
+        cls.module_path = Path(sys.modules[cls.__module__].__file__)
 
     def setUp(self) -> None:
         self._started_at = datetime.now(timezone.utc)
+        self.method_name = self.id().split('.')[-1]
+        self.logger = logging.getLogger(self.method_name)
+        LOG.debug(f'{self.id()} started')
 
     def tearDown(self) -> None:
         self._finished_at = datetime.now(timezone.utc)
         self._elapsed = self._finished_at - self._started_at
+        LOG.debug(f'{self.id()} finished')
+
+    def stub_stdin(self, new_input):
+        saved_stdin = sys.stdin
+
+        def cleanup():
+            sys.stdin = saved_stdin
+
+        self.addCleanup(cleanup)
+        sys.stdin = new_input
+        self.logger.debug(f'new stdin {sys.stdin}')
+
+    def stub_stdout(self, new_output):
+        saved_stdout = sys.stdout
+
+        def cleanup():
+            sys.stdout = saved_stdout
+
+        self.addCleanup(cleanup)
+        sys.stdout = new_output
+        self.logger.debug(f'new stdout {sys.stdout}')
+
+    def stub_environment_variable(self, var_name: str, new_var_value):
+        old_var_value = os.getenv(var_name)
+
+        def cleanup():
+            if old_var_value is not None:
+                os.environ[var_name] = old_var_value
+
+        self.addCleanup(cleanup)
+        if new_var_value is not None:
+            os.environ[var_name] = new_var_value
+            self.logger.debug(f'stub env var `{var_name}`: {old_var_value} -> {new_var_value}')
+        else:
+            if var_name in os.environ:
+                del os.environ[var_name]
+            self.logger.debug(f'delete env var `{var_name}`')
 
 
 class CompareTestCase(BaseTestCase):
@@ -41,18 +82,21 @@ class CompareTestCase(BaseTestCase):
         :return:
         """
         super().setUpClass()
-        cls.input_folder = Path(in_folder_path) if in_folder_path \
-            else cls.test_dir_path.joinpath(f'io/in/{cls.relative_to_test_dir}/{cls.__name__}')
+        relative_to_test_dir = cls.module_path.relative_to(TEST_DIR_PATH).parent
+        cls.services_folder = Path(in_folder_path) if in_folder_path \
+            else TEST_DIR_PATH.joinpath(f'io/in/{relative_to_test_dir}/{cls.__name__}')
         cls.output_folder = Path(out_folder_path) if out_folder_path \
-            else cls.test_dir_path.joinpath(f'io/out/{cls.relative_to_test_dir}/{cls.__name__}')
+            else TEST_DIR_PATH.joinpath(f'io/out/{relative_to_test_dir}/{cls.__name__}')
         cls.output_folder.mkdir(parents=True, exist_ok=True)
 
     def setUp(self):
         super().setUp()
-        self.method_name = self.id().split('.')[-1]
         self.out_file_path = self.output_folder / (self.method_name + '_out.txt')
         self.exp_file_path = self.output_folder / (self.method_name + '_exp.txt')
-        self.logger = logging.getLogger(self.method_name)
+
+    def delete_out_file(self):
+        if self.out_file_path.exists():
+            self.out_file_path.unlink()
 
     def compare_file(self, out_file_path: Path, exp_file_path: Path, msg=None):
         self.logger.debug(f'Comparing {out_file_path} with {exp_file_path}')
@@ -83,36 +127,3 @@ class CompareTestCase(BaseTestCase):
         assert_method = self.assertEqual if compare_order else self.assertCountEqual
         with out_file_path.open() as out_f, exp_file_path.open() as exp_f:
             assert_method(load_method(out_f), load_method(exp_f))
-
-    def stub_stdin(self, new_input):
-        saved_stdin = sys.stdin
-
-        def cleanup():
-            sys.stdin = saved_stdin
-
-        self.addCleanup(cleanup)
-        sys.stdin = new_input
-        self.logger.debug(f'new stdin {sys.stdin}')
-
-    def stub_stdout(self, new_output):
-        saved_stdout = sys.stdout
-
-        def cleanup():
-            sys.stdout = saved_stdout
-
-        self.addCleanup(cleanup)
-        sys.stdout = new_output
-        self.logger.debug(f'new stdout {sys.stdout}')
-
-    def stub_or_delete_environment_variable(self, var_name: str, new_var_value: str = None):
-        old_var_value = os.getenv(var_name)
-        def cleanup():
-            if old_var_value is not None:
-                os.environ[var_name] = old_var_value
-        self.addCleanup(cleanup)
-        if new_var_value is not None:
-            os.environ[var_name] = new_var_value
-            self.logger.debug(f'stub env var `{var_name}`: {old_var_value} -> {new_var_value}')
-        else:
-            del os.environ[var_name]
-            self.logger.debug(f'delete env var `{var_name}`')

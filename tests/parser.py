@@ -7,9 +7,8 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.results import TestResultLogMetrics, TestResultCompareFileMeld
-
-ROOT_PATH = Path(__file__).parent.parent
+from .results import TestResultLogMetrics, TestResultCompareFileMeld
+from . import TEST_DIR_PATH
 
 
 class TestParser(argparse.ArgumentParser):
@@ -78,23 +77,18 @@ class TestParser(argparse.ArgumentParser):
         tests all
         tests all -d path/to/testDir
         tests list suite | case | method
-        tests suite testSuite --verbose --meld
+        tests suite testSuite --quiet --meld
         tests case suiteName.caseName
         tests case suiteName.caseName.caseClass.methodName
         """
-
-        self.add_argument(
-            '-d', '--testDirPath', type=str, default='tests',
-            help=f"Path to test dir containing tests to be discovered by TestLoader (default: tests)"
-        )
         self.add_argument(
             '-l', '--logDirPath', type=str, default='.logs',
             help=f"Path to log dir containing debug log (default: .logs)"
         )
         self.add_argument('-s', '--logStdout', action='store_true', help='log to stdout as well as to a log file')
         self.add_argument(
-            '-v', '--verbose', action='store_true',
-            help=f"Make the test verbose (default False)"
+            '-q', '--quiet', action='store_true',
+            help=f"Set logging level as INFO (default: False)"
         )
         self.add_argument('--meld', action='store_true', help='Use meld to compare out and exp file (default False)')
         sub_parser = self.add_subparsers(
@@ -114,12 +108,7 @@ class TestParser(argparse.ArgumentParser):
 
     def __call__(self):
         args = self.parse_args()
-        test_dir = ROOT_PATH.joinpath(args.testDirPath)
-        if not test_dir.exists():
-            self.error(f"Test dir {test_dir} does not exist")
-        os.environ['TEST_DIR_PATH'] = str(test_dir)
-
-        log_dir = ROOT_PATH.joinpath(args.logDirPath)
+        log_dir = TEST_DIR_PATH.joinpath(args.logDirPath)
         log_dir.mkdir(exist_ok=True)
 
         os.environ['METRICS_LOG_PATH'] = str(log_dir / 'test_metrics.log')
@@ -133,12 +122,12 @@ class TestParser(argparse.ArgumentParser):
             if args.logStdout else [file_handler]
         }
 
-        if args.verbose:
-            log_config_kwargs['level'] = logging.DEBUG
-            verbosity = 2
-        else:
+        if args.quiet:
             log_config_kwargs['level'] = logging.INFO
             verbosity = 1
+        else:
+            log_config_kwargs['level'] = logging.DEBUG
+            verbosity = 2
         logging.basicConfig(**log_config_kwargs)
         logging.Formatter.converter = time.gmtime
 
@@ -146,7 +135,7 @@ class TestParser(argparse.ArgumentParser):
         runner = unittest.TextTestRunner(verbosity=verbosity, resultclass=result_class)
 
         all_succeed = True
-        test_suites = self.discover_test_suites(test_dir)
+        test_suites = self.discover_test_suites(TEST_DIR_PATH)
         if args.command == 'all':
             results = [runner.run(test_suites[s_name]).wasSuccessful() for s_name in test_suites]
             all_succeed = all(results)
@@ -154,20 +143,20 @@ class TestParser(argparse.ArgumentParser):
             if args.suiteName in list(test_suites.keys()):
                 all_succeed = runner.run(test_suites[args.suiteName]).wasSuccessful()
             else:
-                self.error(f"Suite {args.suiteName} not found in {test_dir}. Use `list` option to list suite")
+                self.error(f"Suite {args.suiteName} not found in {TEST_DIR_PATH}. Use `list` option to list suite")
         elif args.command == 'case':
-            relative_to_root = '.'.join(test_dir.relative_to(ROOT_PATH).parts)
+            relative_to_root = '.'.join(TEST_DIR_PATH.relative_to(os.getcwd()).parts)
             suite = unittest.defaultTestLoader.loadTestsFromName(f"{relative_to_root}.{args.caseName}")
             all_succeed = runner.run(suite).wasSuccessful()
         elif args.command == 'list':
             if args.level == 'suite':
                 names = list(test_suites.keys())
             elif args.level == 'case':
-                names = self.discover_test_cases(test_dir)
+                names = self.discover_test_cases(TEST_DIR_PATH)
             else:
-                names = self.discover_test_methods(test_dir)
+                names = self.discover_test_methods(TEST_DIR_PATH)
             if not names:
-                sys.stdout.write(f"No {args.level} found in {test_dir}")
+                sys.stdout.write(f"No {args.level} found in {TEST_DIR_PATH}")
             else:
                 sys.stdout.write('\n'.join(names))
                 sys.stdout.write('\n')

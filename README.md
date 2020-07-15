@@ -9,7 +9,9 @@ Based on [unittest](https://docs.python.org/3/library/unittest.html):
     - Discover suite, case, method based on hierarchy
     - Flag option for test dir, metric file, verbosity, and meld  
 
-**To add a test suite, simply add a new package in the `tests` package and add test cases there**
+**Setup**:
+    - Add the `tests` package to the root of your project
+    - To add a test suite, simply add a new package in the `tests` package and add test cases there
 
 ### [Utils pacakge](utils)
 - [Logging utils](utils/logging.py)
